@@ -106,13 +106,18 @@ defaults:
       - store_test_results: *store_test_results
       - store_artifacts: *artifacts_test_results
 
+  - test_ubuntu1810: &test_ubuntu1810
+      docker:
+        - image: buildpack-deps:cosmic
+      steps: *test_steps
+
   - test_ubuntu1904: &test_ubuntu1904
       docker:
         - image: ethereum/solidity-buildpack-deps:ubuntu1904
       steps: *test_steps
 
   - test_asan: &test_asan
-      <<: *test_ubuntu1904
+      <<: *test_ubuntu1810
       steps:
       - checkout
       - attach_workspace:
@@ -146,7 +151,7 @@ defaults:
       requires:
         - b_osx
 
-  - workflow_ubuntu1904_asan: &workflow_ubuntu1904_asan
+  - workflow_ubuntu1810_asan: &workflow_ubuntu1810_asan
       <<: *workflow_trigger_on_tags
       requires:
         - b_ubu_asan
@@ -225,6 +230,15 @@ jobs:
   b_ubu: &build_ubuntu1904
     docker:
       - image: ethereum/solidity-buildpack-deps:ubuntu1904
+    steps:
+      - checkout
+      - run: *run_build
+      - store_artifacts: *artifacts_solc
+      - persist_to_workspace: *artifacts_executables
+
+  b_ubu_1810: &build_ubuntu1810
+    docker:
+      - image: buildpack-deps:cosmic
     steps:
       - checkout
       - run: *run_build
@@ -388,12 +402,20 @@ jobs:
 
   # x64 ASAN build, for testing for memory related bugs
   b_ubu_asan: &b_ubu_asan
-    <<: *build_ubuntu1904
+    <<: *build_ubuntu1810
     environment:
+      TERM: xterm
+      CC: /usr/bin/clang-7
+      CXX: /usr/bin/clang++-7
       CMAKE_OPTIONS: -DSANITIZE=address
       CMAKE_BUILD_TYPE: Release
     steps:
       - checkout
+      - run:
+          name: Install build dependencies
+          command: |
+            apt-get -qq update
+            apt-get -qy install clang-7 cmake libboost-regex-dev libboost-filesystem-dev libboost-test-dev libboost-system-dev libboost-program-options-dev libcvc4-dev libjsoncpp-dev=1.7.4-\*
       - run: *run_build
       - store_artifacts: *artifacts_solc
       - persist_to_workspace: *artifacts_executables
@@ -600,8 +622,8 @@ workflows:
 
       # ASan build and tests
       - b_ubu_asan: *workflow_trigger_on_tags
-      - t_ubu_asan_constantinople: *workflow_ubuntu1904_asan
-      - t_ubu_asan_cli: *workflow_ubuntu1904_asan
+      - t_ubu_asan_constantinople: *workflow_ubuntu1810_asan
+      - t_ubu_asan_cli: *workflow_ubuntu1810_asan
 
       # Emscripten build and selected tests
       - b_ems: *workflow_trigger_on_tags
