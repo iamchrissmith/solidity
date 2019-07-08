@@ -297,6 +297,35 @@ The reason for this is that ``C`` requests ``X`` to override ``A``
 requests to override ``X``, which is a contradiction that
 cannot be resolved.
 
+One area where inheritance linearization is especially important and perhaps not as clear is when inheriting and implementing multiple `constructor`s. The linearization will apply the `constructor`s in the order of the inheritance not in the order in which they are declared in the inheriting class's `constructor`.  For example:
+
+::
+
+    pragma solidity >=0.4.0 <0.7.0;
+
+    // Constructors are fired in the following order:
+    //  1 - Base1
+    //  2 - Base2
+    //  3 - Core1
+    contract Core1 is Base1, Base2 {
+        constructor() public Base1() Base2() {}
+    }
+
+    // Constructors are fired in the following order:
+    //  1 - Base2
+    //  2 - Base1
+    //  3 - Core2
+    contract Core2 is Base2, Base1 {
+        constructor() public Base2() Base1() {}
+    }
+
+    // Constructors are still fired in the following order:
+    //  1 - Base2
+    //  2 - Base1
+    //  3 - Core3
+    contract Core3 is Base2, Base1 {
+        constructor() public Base1() Base2() {}
+    }
 
 
 Inheriting Different Kinds of Members of the Same Name
